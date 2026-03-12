@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>確率シミュレーション</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #2563eb;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .link-card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: transform 0.12s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .link-card:hover,
+    .link-card:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      background: #f8fbff;
+      outline: none;
+    }
+
+    .link-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    
+
+    
+
+    .arrow {
+      color: var(--accent);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .link-card-desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 16px;
+      }
+
+      .hero {
+        padding: 22px 18px;
+      }
+
+      h1 {
+        font-size: 1.7rem;
+      }
+
+      .link-card {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>確率シミュレーション</h1>
+      <p class="lead">シミュレーションしたい内容を選んでください。</p>
+    </section>
+
+    <main class="link-list">
+      <a class="link-card" href="coin_probability_simulator.html">
+        <div class="link-card-title">
+          <span>コイン投げ</span>
+          <span class="arrow">→</span>
+        </div>
+        <p class="link-card-desc">コインを何度も投げて、表が出る割合がどのように変化するかを観察できます。</p>
+      </a>
+
+      <a class="link-card" href="dice_probability_simulator.html">
+        <div class="link-card-title">
+          <span>サイコロ振り</span>
+          <span class="arrow">→</span>
+        </div>
+        <p class="link-card-desc">1つのサイコロを何度も振って、4の目が出る割合がどのように変化するかを観察できます。</p>
+      </a>
+
+      <a class="link-card" href="card_probability_simulator.html">
+        <div class="link-card-title">
+          <span>トランプ引き</span>
+          <span class="arrow">→</span>
+        </div>
+        <p class="link-card-desc">52枚のトランプから1枚引いて、ハートが出る割合がどのように変化するかを観察できます。</p>
+      </a>
+
+      <a class="link-card" href="ball_probability_simulator.html">
+        <div class="link-card-title">
+          <span>玉取り出し</span>
+          <span class="arrow">→</span>
+        </div>
+        <p class="link-card-desc">赤玉2個、白玉1個、青玉3個が入っている袋から1個取り出して、赤玉が出る割合がどのように変化するかを観察できます。</p>
+      </a>
+    </main>
+  </div>
+</body>
+</html>

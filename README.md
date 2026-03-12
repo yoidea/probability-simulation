@@ -1,2 +1,4 @@
 # probability-simulation
+
 中学2年生数学の確率の問題を乱数でシミュレーションしてみた
+

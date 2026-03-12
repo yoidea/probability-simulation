@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>玉取り出し確率シミュレーション</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #2563eb;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --red-ball: #dc2626;
+      --white-ball: #f9fafb;
+      --white-ball-border: #cbd5e1;
+      --blue-ball: #2563eb;
+      --hit: #fef2f2;
+      --miss: #eff6ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .lead {
+      margin: 0 0 24px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.08s ease, opacity 0.2s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .primary:disabled,
+    .secondary:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .result-box {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 16px 0 20px;
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      background: #fff;
+    }
+
+    .stat h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stat p {
+      margin: 8px 0 0;
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .red-text {
+      color: var(--red-ball);
+    }
+
+    .blue-text {
+      color: var(--blue-ball);
+    }
+
+    .bag-display {
+      border-radius: 16px;
+      padding: 20px 16px;
+      margin-bottom: 16px;
+      min-height: 220px;
+      border: 2px dashed var(--border);
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .bag-display.hit {
+      background: var(--hit);
+      border-color: #fca5a5;
+    }
+
+    .bag-display.miss {
+      background: var(--miss);
+      border-color: #93c5fd;
+    }
+
+    .bag-stage {
+      position: relative;
+      width: 220px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bag {
+      position: absolute;
+      bottom: 4px;
+      width: 160px;
+      height: 110px;
+      background: transparent;
+      border: 3px solid #9ca3af;
+      border-radius: 28px 28px 42px 42px;
+      overflow: hidden;
+      transition: opacity 0.2s ease;
+    }
+
+    .bag.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    
+
+    
+
+    .bag-ball {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      box-shadow: inset -4px -4px 0 rgba(0,0,0,0.08);
+      transition: opacity 0.2s ease;
+    }
+
+    .bag.hidden .bag-ball,
+    .bag.hidden .bag-mouth {
+      opacity: 0;
+    }
+
+    .bag-ball.red { background: var(--red-ball); }
+    .bag-ball.white { background: var(--white-ball); border: 2px solid var(--white-ball-border); }
+    .bag-ball.blue { background: var(--blue-ball); }
+
+    .bag-ball.b1 { left: 34px; top: 52px; }
+    .bag-ball.b2 { left: 62px; top: 48px; }
+    .bag-ball.b3 { left: 90px; top: 54px; }
+    .bag-ball.b4 { left: 48px; top: 76px; }
+    .bag-ball.b5 { left: 76px; top: 76px; }
+    .bag-ball.b6 { left: 104px; top: 74px; }
+
+    /* 袋の中で少しランダムに動くアニメーション */
+    .bag.shuffle .bag-ball {
+      animation: shuffleBall 0.35s ease-in-out infinite alternate;
+    }
+
+    @keyframes shuffleBall {
+      0% { transform: translate(0,0); }
+      25% { transform: translate(2px,-2px); }
+      50% { transform: translate(-2px,2px); }
+      75% { transform: translate(1px,1px); }
+      100% { transform: translate(-1px,-1px); }
+    }
+    .bag-ball.b2 { left: 62px; top: 48px; }
+    .bag-ball.b3 { left: 90px; top: 54px; }
+    .bag-ball.b4 { left: 48px; top: 76px; }
+    .bag-ball.b5 { left: 76px; top: 76px; }
+    .bag-ball.b6 { left: 104px; top: 74px; }
+
+    .picked-ball {
+      position: absolute;
+      top: 18px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      opacity: 0;
+      transform: translateY(28px) scale(0.8);
+      box-shadow: inset -5px -5px 0 rgba(0,0,0,0.08), 0 8px 16px rgba(0,0,0,0.12);
+    }
+
+    .picked-ball.large {
+      width: 72px;
+      height: 72px;
+      top: 30px;
+      box-shadow: inset -8px -8px 0 rgba(0,0,0,0.08), 0 12px 24px rgba(0,0,0,0.14);
+    }
+
+    .picked-ball.red { background: var(--red-ball); }
+    .picked-ball.white { background: var(--white-ball); border: 2px solid var(--white-ball-border); }
+    .picked-ball.blue { background: var(--blue-ball); }
+
+    .picked-ball.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      transition: all 0.25s ease-out;
+    }
+
+    .picked-ball.picking {
+      animation: pickBall 0.6s ease-out;
+      opacity: 1;
+    }
+
+    @keyframes pickBall {
+      0% {
+        transform: translateY(36px) scale(0.72);
+        opacity: 0;
+      }
+      45% {
+        transform: translateY(-4px) scale(1.05);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    .bag-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-align: center;
+      min-height: 2.2em;
+    }
+
+    .table-wrap {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      z-index: 1;
+    }
+
+    .hit-row {
+      background: #fef2f2;
+      font-weight: 700;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary-item {
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.96rem;
+    }
+
+    .summary-item span {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .chart-wrap {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    canvas {
+      width: 100%;
+      height: 320px;
+      display: block;
+    }
+
+    .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .result-box {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .bag-stage {
+        transform: scale(0.92);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>玉取り出し確率シミュレーション</h1>
+    <p class="lead">赤玉2個、白玉1個、青玉3個が入っている袋から1個取り出して、赤玉が出る割合がどのように変化するかを観察できます。</p>
+
+    <div class="grid">
+      <section class="card">
+        <div class="controls">
+          <button id="drawButton" class="primary">玉を取り出す</button>
+          <button id="autoButton" class="secondary">自動で取り出す</button>
+          <button id="resetButton" class="secondary">リセット</button>
+        </div>
+
+        <div id="bagDisplay" class="bag-display">
+          <div class="bag-stage">
+            <div id="pickedBall" class="picked-ball" aria-hidden="true"></div>
+            <div class="bag">
+              <div class="bag-mouth"></div>
+              <div class="bag-ball red b1"></div>
+              <div class="bag-ball red b2"></div>
+              <div class="bag-ball white b3"></div>
+              <div class="bag-ball blue b4"></div>
+              <div class="bag-ball blue b5"></div>
+              <div class="bag-ball blue b6"></div>
+            </div>
+          </div>
+          <div id="bagText" class="bag-text">まだ玉は取り出されていません</div>
+        </div>
+
+        <div class="result-box">
+          <div class="stat">
+            <h2>試行回数</h2>
+            <p id="trialCount">0</p>
+          </div>
+          <div class="stat">
+            <h2 class="red-text">赤玉</h2>
+            <p id="redCount">0</p>
+          </div>
+          <div class="stat">
+            <h2>白玉</h2>
+            <p id="whiteCount">0</p>
+          </div>
+          <div class="stat">
+            <h2 class="blue-text">青玉</h2>
+            <p id="blueCount">0</p>
+          </div>
+        </div>
+
+        <h2>結果一覧</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>回数</th>
+                <th>結果</th>
+                <th>赤玉が出る確率</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="summary-list">
+          <div class="summary-item">
+            <strong><span class="red-text">赤玉</span>が出る確率</strong>
+            <span id="redProbability">0%</span>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <h2><span class="red-text">赤玉</span>が出る確率の遷移</h2>
+          <canvas id="probabilityChart" width="500" height="320"></canvas>
+          <p class="note">横軸は試行回数、縦軸はその時点までに赤玉が出た割合。</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const drawButton = document.getElementById('drawButton');
+    const autoButton = document.getElementById('autoButton');
+    const resetButton = document.getElementById('resetButton');
+    const bagDisplay = document.getElementById('bagDisplay');
+    const pickedBall = document.getElementById('pickedBall');
+    const bagText = document.getElementById('bagText');
+    const trialCountEl = document.getElementById('trialCount');
+    const redCountEl = document.getElementById('redCount');
+    const whiteCountEl = document.getElementById('whiteCount');
+    const blueCountEl = document.getElementById('blueCount');
+    const redProbabilityEl = document.getElementById('redProbability');
+    const resultBody = document.getElementById('resultBody');
+    const canvas = document.getElementById('probabilityChart');
+    const ctx = canvas.getContext('2d');
+
+    const balls = [
+      { name: '赤玉', colorClass: 'red', textColor: 'var(--red-ball)' },
+      { name: '赤玉', colorClass: 'red', textColor: 'var(--red-ball)' },
+      { name: '白玉', colorClass: 'white', textColor: 'var(--text)' },
+      { name: '青玉', colorClass: 'blue', textColor: 'var(--blue-ball)' },
+      { name: '青玉', colorClass: 'blue', textColor: 'var(--blue-ball)' },
+      { name: '青玉', colorClass: 'blue', textColor: 'var(--blue-ball)' }
+    ];
+
+    let results = [];
+    let autoMode = false;
+    let autoTimer = null;
+
+    function randomizeBalls() {
+      const bag = document.querySelector('.bag');
+      const bagBalls = Array.from(bag.querySelectorAll('.bag-ball'));
+      const placed = [];
+      const minDistance = 26;
+      const minX = 12;
+      const maxX = 124;
+      const minY = 34;
+      const maxY = 80;
+
+      bagBalls.forEach(ball => {
+        let x = minX;
+        let y = minY;
+        let placedSuccessfully = false;
+
+        for (let i = 0; i < 200; i++) {
+          x = minX + Math.random() * (maxX - minX);
+          y = minY + Math.random() * (maxY - minY);
+
+          const overlaps = placed.some(pos => {
+            const dx = pos.x - x;
+            const dy = pos.y - y;
+            return Math.hypot(dx, dy) < minDistance;
+          });
+
+          if (!overlaps) {
+            placedSuccessfully = true;
+            break;
+          }
+        }
+
+        if (!placedSuccessfully) {
+          const fallback = [
+            { x: 24, y: 40 },
+            { x: 54, y: 40 },
+            { x: 84, y: 40 },
+            { x: 18, y: 68 },
+            { x: 48, y: 68 },
+            { x: 78, y: 68 }
+          ][placed.length] || { x: 108, y: 68 };
+          x = fallback.x;
+          y = fallback.y;
+        }
+
+        placed.push({ x, y });
+        ball.style.left = x + 'px';
+        ball.style.top = y + 'px';
+      });
+    }
+
+    function percent(value) {
+      return (value * 100).toFixed(1) + '%';
+    }
+
+    function updateDisplay() {
+      const trials = results.length;
+      const counts = { '赤玉': 0, '白玉': 0, '青玉': 0 };
+
+      for (const result of results) {
+        counts[result.name]++;
+      }
+
+      const redProb = trials === 0 ? 0 : counts['赤玉'] / trials;
+
+      trialCountEl.textContent = trials;
+      redCountEl.textContent = counts['赤玉'];
+      whiteCountEl.textContent = counts['白玉'];
+      blueCountEl.textContent = counts['青玉'];
+      redProbabilityEl.textContent = percent(redProb);
+
+      renderTable();
+      drawChart();
+    }
+
+    function renderTable() {
+      let redsSoFar = 0;
+      resultBody.innerHTML = '';
+
+      results.forEach((result, index) => {
+        if (result.name === '赤玉') redsSoFar++;
+        const probability = redsSoFar / (index + 1);
+
+        const row = document.createElement('tr');
+        if (result.name === '赤玉') row.classList.add('hit-row');
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td style="color:${result.textColor}">${result.name.replace('玉', '')}</td>
+          <td>${percent(probability)}</td>
+        `;
+        resultBody.appendChild(row);
+      });
+    }
+
+    function drawChart() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const padding = 40;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, 20);
+      ctx.lineTo(padding, height - padding);
+      ctx.lineTo(width - 20, height - padding);
+      ctx.stroke();
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px sans-serif';
+      [0, 0.25, 0.5, 0.75, 1].forEach(value => {
+        const y = height - padding - (height - padding - 20) * value;
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - 20, y);
+        ctx.stroke();
+        ctx.fillText(Math.round(value * 100) + '%', 6, y + 4);
+      });
+
+      if (results.length === 0) {
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('まだデータがありません', width / 2 - 80, height / 2);
+        return;
+      }
+
+      const theoretical = 2 / 6;
+      const yTheory = height - padding - (height - padding - 20) * theoretical;
+      ctx.save();
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(padding, yTheory);
+      ctx.lineTo(width - 20, yTheory);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('33.3%', width - 58, yTheory - 6);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('1', padding - 3, height - 15);
+      ctx.fillText(String(results.length), width - 30, height - 15);
+      ctx.fillText('試行回数', width / 2 - 22, height - 10);
+
+      let redsSoFar = 0;
+      const points = results.map((result, index) => {
+        if (result.name === '赤玉') redsSoFar++;
+        const probability = redsSoFar / (index + 1);
+        const x = padding + ((width - padding - 20) * index) / Math.max(results.length - 1, 1);
+        const y = height - padding - (height - padding - 20) * probability;
+        return { x, y };
+      });
+
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point.x, point.y);
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = '#2563eb';
+      points.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawBall(callback) {
+      drawButton.disabled = true;
+      autoButton.disabled = true;
+      resetButton.disabled = true;
+
+      const result = balls[Math.floor(Math.random() * balls.length)];
+      const bag = document.querySelector('.bag');
+
+      // 袋の中の玉を毎回ランダム配置
+      randomizeBalls();
+
+      // まず袋の中身を見せる
+      bag.classList.remove('hidden');
+      bag.classList.add('shuffle');
+      pickedBall.className = 'picked-ball';
+
+      bagDisplay.className = 'bag-display';
+      bagText.textContent = '玉を取り出しています…';
+
+      setTimeout(() => {
+        bag.classList.remove('shuffle');
+        bag.classList.add('hidden');
+        pickedBall.className = 'picked-ball ' + result.colorClass + ' large picking';
+      }, 260);
+
+      setTimeout(() => {
+        results.push(result);
+        pickedBall.className = 'picked-ball ' + result.colorClass + ' large show';
+        bagText.innerHTML = '今回の結果：<span style="color:' + result.textColor + '">' + result.name.replace('玉', '') + '</span>';
+        bagDisplay.className = 'bag-display ' + (result.name === '赤玉' ? 'hit' : 'miss');
+
+        updateDisplay();
+
+        if (!autoMode) {
+          drawButton.disabled = false;
+          autoButton.disabled = false;
+          resetButton.disabled = false;
+        } else {
+          autoButton.disabled = false;
+          resetButton.disabled = false;
+        }
+
+        if (callback) callback();
+      }, 600);
+    }
+
+    function startAutoMode() {
+      if (autoMode) {
+        stopAutoMode();
+        return;
+      }
+
+      autoMode = true;
+      autoButton.textContent = '自動取り出しを停止';
+      drawButton.disabled = true;
+
+      const run = () => {
+        if (!autoMode) return;
+        drawBall(() => {
+          if (!autoMode) return;
+          autoTimer = setTimeout(run, 200);
+        });
+      };
+
+      run();
+    }
+
+    function stopAutoMode() {
+      autoMode = false;
+      autoButton.textContent = '自動で取り出す';
+      drawButton.disabled = false;
+      autoButton.disabled = false;
+      resetButton.disabled = false;
+      if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    function resetSimulation() {
+      stopAutoMode();
+      results = [];
+      bagText.textContent = 'まだ玉は取り出されていません';
+      bagDisplay.className = 'bag-display';
+      pickedBall.className = 'picked-ball';
+      const bag = document.querySelector('.bag');
+      bag.classList.remove('hidden');
+      bag.classList.remove('shuffle');
+      updateDisplay();
+    }
+
+    drawButton.addEventListener('click', () => drawBall());
+    autoButton.addEventListener('click', startAutoMode);
+    resetButton.addEventListener('click', resetSimulation);
+
+    resetSimulation();
+  </script>
+</body>
+</html>

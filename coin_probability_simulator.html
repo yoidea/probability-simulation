@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>コイン投げ確率シミュレーション</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --head: #ecf3ff;
+      --tail: #fff7ed;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --coin-gold-1: #fbbf24;
+      --coin-gold-2: #f59e0b;
+      --coin-edge: #b45309;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .lead {
+      margin: 0 0 24px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.08s ease, opacity 0.2s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .primary:disabled,
+    .secondary:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .result-box {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 16px 0 20px;
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      background: #fff;
+    }
+
+    .stat h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stat p {
+      margin: 8px 0 0;
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .coin-display {
+      border-radius: 16px;
+      padding: 20px 16px;
+      margin-bottom: 16px;
+      min-height: 180px;
+      border: 2px dashed var(--border);
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .coin-display.head {
+      background: var(--head);
+      border-color: #93c5fd;
+    }
+
+    .coin-display.tail {
+      background: var(--tail);
+      border-color: #fdba74;
+    }
+
+    .coin-stage {
+      perspective: 800px;
+      height: 84px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .coin {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      position: relative;
+      transform-style: preserve-3d;
+      background: radial-gradient(circle at 30% 30%, #fde68a, var(--coin-gold-1) 55%, var(--coin-gold-2));
+      border: 4px solid var(--coin-edge);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
+    }
+
+    .coin::before,
+    .coin::after {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: 800;
+      backface-visibility: hidden;
+      border-radius: 50%;
+    }
+
+    .coin::before {
+      content: "表";
+      color: #7c2d12;
+      background: radial-gradient(circle at 30% 30%, #fef3c7, #fbbf24 70%);
+    }
+
+    .coin::after {
+      content: "裏";
+      color: #7c2d12;
+      background: radial-gradient(circle at 30% 30%, #ffedd5, #fb923c 70%);
+      transform: rotateY(180deg);
+    }
+
+    .coin.is-head {
+      transform: rotateY(0deg);
+    }
+
+    .coin.is-tail {
+      transform: rotateY(180deg);
+    }
+
+    .coin.flipping {
+      animation: coinFlip 0.6s ease-out;
+    }
+
+    @keyframes coinFlip {
+      0% {
+        transform: translateY(0) rotateY(0deg);
+      }
+      50% {
+        transform: translateY(-18px) rotateY(720deg);
+      }
+      100% {
+        transform: translateY(0) rotateY(var(--final-rotate, 0deg));
+      }
+    }
+      20% {
+        transform: translateY(-18px) rotateY(360deg) rotateX(25deg) scale(1.04);
+      }
+      50% {
+        transform: translateY(-34px) rotateY(900deg) rotateX(0deg) scale(1.06);
+      }
+      80% {
+        transform: translateY(-16px) rotateY(1260deg) rotateX(-20deg) scale(1.03);
+      }
+      100% {
+        transform: translateY(0) rotateY(var(--final-rotate, 0deg)) rotateX(0deg) scale(1);
+      }
+    }
+
+    .coin-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-align: center;
+      min-height: 2.2em;
+    }
+
+    .table-wrap {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      z-index: 1;
+    }
+
+    .hit-row {
+      background: #ecf3ff;
+      font-weight: 700;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary-item {
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.96rem;
+    }
+
+    .summary-item span {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .chart-wrap {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    canvas {
+      width: 100%;
+      height: 320px;
+      display: block;
+    }
+
+    .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .result-box {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .coin {
+        width: 72px;
+        height: 72px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>コイン投げ確率シミュレーション</h1>
+    <p class="lead">コインを何度も投げて、表が出る割合がどのように変化するかを観察できます。</p>
+
+    <div class="grid">
+      <section class="card">
+        <div class="controls">
+          <button id="flipButton" class="primary">コインを投げる</button>
+          <button id="autoButton" class="secondary">自動で投げる</button>
+          <button id="resetButton" class="secondary">リセット</button>
+        </div>
+
+        <div id="coinDisplay" class="coin-display">
+          <div class="coin-stage">
+            <div id="coinVisual" class="coin is-head" aria-hidden="true"></div>
+          </div>
+          <div id="coinText" class="coin-text">まだコインは投げられていません</div>
+        </div>
+
+        <div class="result-box">
+          <div class="stat">
+            <h2>試行回数</h2>
+            <p id="trialCount">0</p>
+          </div>
+          <div class="stat">
+            <h2>表の回数</h2>
+            <p id="headCount">0</p>
+          </div>
+          <div class="stat">
+            <h2>裏の回数</h2>
+            <p id="tailCount">0</p>
+          </div>
+        </div>
+
+        <h2>結果一覧</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>回数</th>
+                <th>結果</th>
+                <th>表が出る確率</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="summary-list">
+          <div class="summary-item">
+            <strong>表が出る確率</strong>
+            <span id="headProbability">0%</span>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <h2>表が出る確率の遷移</h2>
+          <canvas id="probabilityChart" width="500" height="320"></canvas>
+          <p class="note">横軸は試行回数、縦軸はその時点までの表が出た割合。</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const flipButton = document.getElementById('flipButton');
+    const autoButton = document.getElementById('autoButton');
+    const resetButton = document.getElementById('resetButton');
+    const coinDisplay = document.getElementById('coinDisplay');
+    const coinVisual = document.getElementById('coinVisual');
+    const coinText = document.getElementById('coinText');
+    const trialCountEl = document.getElementById('trialCount');
+    const headCountEl = document.getElementById('headCount');
+    const tailCountEl = document.getElementById('tailCount');
+    const headProbabilityEl = document.getElementById('headProbability');
+    const resultBody = document.getElementById('resultBody');
+    const canvas = document.getElementById('probabilityChart');
+    const ctx = canvas.getContext('2d');
+
+    let results = [];
+    let autoMode = false;
+    let autoTimer = null;
+
+    function percent(value) {
+      return (value * 100).toFixed(1) + '%';
+    }
+
+    function updateDisplay() {
+      const trials = results.length;
+      let heads = 0;
+      for (const result of results) {
+        if (result === '表') heads++;
+      }
+      const tails = trials - heads;
+      const headProb = trials === 0 ? 0 : heads / trials;
+
+      trialCountEl.textContent = trials;
+      headCountEl.textContent = heads;
+      tailCountEl.textContent = tails;
+      headProbabilityEl.textContent = percent(headProb);
+
+      renderTable();
+      drawChart();
+    }
+
+    function renderTable() {
+      let headsSoFar = 0;
+      resultBody.innerHTML = '';
+
+      results.forEach((result, index) => {
+        if (result === '表') headsSoFar++;
+        const probability = headsSoFar / (index + 1);
+
+        const row = document.createElement('tr');
+        if (result === '表') row.classList.add('hit-row');
+
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${result}</td>
+          <td>${percent(probability)}</td>
+        `;
+        resultBody.appendChild(row);
+      });
+    }
+
+    function drawChart() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const padding = 40;
+
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+
+      // Axes
+      ctx.beginPath();
+      ctx.moveTo(padding, 20);
+      ctx.lineTo(padding, height - padding);
+      ctx.lineTo(width - 20, height - padding);
+      ctx.stroke();
+
+      // Horizontal guide lines and labels
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px sans-serif';
+      [0, 0.25, 0.5, 0.75, 1].forEach(value => {
+        const y = height - padding - (height - padding - 20) * value;
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - 20, y);
+        ctx.stroke();
+        ctx.fillText(Math.round(value * 100) + '%', 6, y + 4);
+      });
+
+      if (results.length === 0) {
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('まだデータがありません', width / 2 - 80, height / 2);
+        return;
+      }
+
+      // 50% reference line
+      const y50 = height - padding - (height - padding - 20) * 0.5;
+      ctx.save();
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(padding, y50);
+      ctx.lineTo(width - 20, y50);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('50%', width - 52, y50 - 6);
+
+      // X-axis labels
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('1', padding - 3, height - 15);
+      ctx.fillText(String(results.length), width - 30, height - 15);
+      ctx.fillText('試行回数', width / 2 - 22, height - 10);
+
+      // Data line
+      let headsSoFar = 0;
+      const points = results.map((result, index) => {
+        if (result === '表') headsSoFar++;
+        const probability = headsSoFar / (index + 1);
+        const x = padding + ((width - padding - 20) * index) / Math.max(results.length - 1, 1);
+        const y = height - padding - (height - padding - 20) * probability;
+        return { x, y };
+      });
+
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point.x, point.y);
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = '#2563eb';
+      points.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function flipCoin(callback) {
+      flipButton.disabled = true;
+      autoButton.disabled = true;
+      resetButton.disabled = true;
+
+      const isHead = Math.random() < 0.5;
+      const result = isHead ? '表' : '裏';
+      const finalRotate = isHead ? '0deg' : '180deg';
+
+      coinDisplay.className = 'coin-display';
+      coinText.textContent = 'コインを投げています…';
+      coinVisual.className = 'coin flipping';
+      coinVisual.style.setProperty('--final-rotate', finalRotate);
+
+      setTimeout(() => {
+        results.push(result);
+
+        coinVisual.className = 'coin ' + (isHead ? 'is-head' : 'is-tail');
+        coinText.textContent = '今回の結果：' + result;
+        coinDisplay.className = 'coin-display ' + (isHead ? 'head' : 'tail');
+
+        updateDisplay();
+
+        if (!autoMode) {
+          flipButton.disabled = false;
+          autoButton.disabled = false;
+          resetButton.disabled = false;
+        } else {
+          autoButton.disabled = false;
+          resetButton.disabled = false;
+        }
+
+        if (callback) callback();
+      }, 600);
+    }
+
+    function startAutoMode() {
+      if (autoMode) {
+        stopAutoMode();
+        return;
+      }
+
+      autoMode = true;
+      autoButton.textContent = '自動投げを停止';
+      flipButton.disabled = true;
+
+      const run = () => {
+        if (!autoMode) return;
+        flipCoin(() => {
+          if (!autoMode) return;
+          autoTimer = setTimeout(run, 200);
+        });
+      };
+
+      run();
+    }
+
+    function stopAutoMode() {
+      autoMode = false;
+      autoButton.textContent = '自動で投げる';
+      flipButton.disabled = false;
+      autoButton.disabled = false;
+      resetButton.disabled = false;
+      if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    function resetSimulation() {
+      stopAutoMode();
+      results = [];
+      coinText.textContent = 'まだコインは投げられていません';
+      coinDisplay.className = 'coin-display';
+      coinVisual.className = 'coin is-head';
+      coinVisual.style.setProperty('--final-rotate', '0deg');
+      updateDisplay();
+    }
+
+    flipButton.addEventListener('click', () => flipCoin());
+    autoButton.addEventListener('click', startAutoMode);
+    resetButton.addEventListener('click', resetSimulation);
+
+    updateDisplay();
+  </script>
+</body>
+</html>

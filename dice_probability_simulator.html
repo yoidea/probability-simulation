@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>サイコロ振りシミュレーション</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --hit: #ecfdf5;
+      --miss: #fafafa;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --die-face: #ffffff;
+      --die-edge: #cbd5e1;
+      --pip: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .lead {
+      margin: 0 0 24px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.08s ease, opacity 0.2s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .primary:disabled,
+    .secondary:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .result-box {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 16px 0 20px;
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      background: #fff;
+    }
+
+    .stat h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stat p {
+      margin: 8px 0 0;
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .dice-display {
+      border-radius: 16px;
+      padding: 20px 16px;
+      margin-bottom: 16px;
+      min-height: 180px;
+      border: 2px dashed var(--border);
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .dice-display.hit {
+      background: var(--hit);
+      border-color: #86efac;
+    }
+
+    .dice-display.miss {
+      background: var(--miss);
+      border-color: #d1d5db;
+    }
+
+    /* 4が出た行を強調 */
+    .hit-row {
+      background: #ecfdf5;
+      font-weight: 700;
+    }
+
+    .dice-stage {
+      height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 800px;
+    }
+
+    .die {
+      width: 84px;
+      height: 84px;
+      background: var(--die-face);
+      border: 4px solid var(--die-edge);
+      border-radius: 18px;
+      position: relative;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.14);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 10px;
+      gap: 4px;
+      transform-origin: center center;
+    }
+
+    .die.rolling {
+      animation: diceRoll 0.6s ease-out;
+    }
+
+    @keyframes diceRoll {
+      0% {
+        transform: translateY(0) rotate(0deg) scale(1);
+      }
+      35% {
+        transform: translateY(-14px) rotate(100deg) scale(1.06);
+      }
+      70% {
+        transform: translateY(-6px) rotate(210deg) scale(1.03);
+      }
+      100% {
+        transform: translateY(0) rotate(360deg) scale(1);
+      }
+    }
+
+    .pip {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--pip);
+      align-self: center;
+      justify-self: center;
+      opacity: 0;
+    }
+
+    .pip.show {
+      opacity: 1;
+    }
+
+    .dice-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-align: center;
+      min-height: 2.2em;
+    }
+
+    .table-wrap {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      z-index: 1;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary-item {
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.96rem;
+    }
+
+    .summary-item span {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .chart-wrap {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    canvas {
+      width: 100%;
+      height: 320px;
+      display: block;
+    }
+
+    .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .result-box {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .die {
+        width: 72px;
+        height: 72px;
+      }
+
+      .pip {
+        width: 10px;
+        height: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>サイコロ振りシミュレーション</h1>
+    <p class="lead">1つのサイコロを何度も振って、4の目が出る割合がどのように変化するかを観察できます。</p>
+
+    <div class="grid">
+      <section class="card">
+        <div class="controls">
+          <button id="rollButton" class="primary">サイコロを振る</button>
+          <button id="autoButton" class="secondary">自動で振る</button>
+          <button id="resetButton" class="secondary">リセット</button>
+        </div>
+
+        <div id="diceDisplay" class="dice-display">
+          <div class="dice-stage">
+            <div id="dieVisual" class="die" aria-hidden="true"></div>
+          </div>
+          <div id="diceText" class="dice-text">まだサイコロは振られていません</div>
+        </div>
+
+        <div class="result-box">
+          <div class="stat">
+            <h2>試行回数</h2>
+            <p id="trialCount">0</p>
+          </div>
+          <div class="stat">
+            <h2>1の回数</h2>
+            <p id="count1">0</p>
+          </div>
+          <div class="stat">
+            <h2>2の回数</h2>
+            <p id="count2">0</p>
+          </div>
+          <div class="stat">
+            <h2>3の回数</h2>
+            <p id="count3">0</p>
+          </div>
+          <div class="stat">
+            <h2>4の回数</h2>
+            <p id="count4">0</p>
+          </div>
+          <div class="stat">
+            <h2>5の回数</h2>
+            <p id="count5">0</p>
+          </div>
+          <div class="stat">
+            <h2>6の回数</h2>
+            <p id="count6">0</p>
+          </div>
+        </div>
+
+        <h2>結果一覧</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>回数</th>
+                <th>結果</th>
+                <th>4の目が出る確率</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="summary-list">
+          <div class="summary-item">
+            <strong>4の目が出る確率</strong>
+            <span id="fourProbability">0%</span>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <h2>4の目が出る確率の遷移</h2>
+          <canvas id="probabilityChart" width="500" height="320"></canvas>
+          <p class="note">横軸は試行回数、縦軸はその時点までに4の目が出た割合。</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const rollButton = document.getElementById('rollButton');
+    const autoButton = document.getElementById('autoButton');
+    const resetButton = document.getElementById('resetButton');
+    const diceDisplay = document.getElementById('diceDisplay');
+    const dieVisual = document.getElementById('dieVisual');
+    const diceText = document.getElementById('diceText');
+    const trialCountEl = document.getElementById('trialCount');
+    const fourProbabilityEl = document.getElementById('fourProbability');
+    const resultBody = document.getElementById('resultBody');
+    const canvas = document.getElementById('probabilityChart');
+    const ctx = canvas.getContext('2d');
+
+    const countEls = {
+      1: document.getElementById('count1'),
+      2: document.getElementById('count2'),
+      3: document.getElementById('count3'),
+      4: document.getElementById('count4'),
+      5: document.getElementById('count5'),
+      6: document.getElementById('count6')
+    };
+
+    const pipMap = {
+      1: [4],
+      2: [0, 8],
+      3: [0, 4, 8],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8]
+    };
+
+    let results = [];
+    let autoMode = false;
+    let autoTimer = null;
+
+    function percent(value) {
+      return (value * 100).toFixed(1) + '%';
+    }
+
+    function createDieFace(value) {
+      dieVisual.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const pip = document.createElement('span');
+        pip.className = 'pip' + (pipMap[value]?.includes(i) ? ' show' : '');
+        dieVisual.appendChild(pip);
+      }
+    }
+
+    function updateDisplay() {
+      const trials = results.length;
+      const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+
+      for (const result of results) {
+        counts[result]++;
+      }
+
+      const fourProb = trials === 0 ? 0 : counts[4] / trials;
+
+      trialCountEl.textContent = trials;
+      fourProbabilityEl.textContent = percent(fourProb);
+
+      for (let i = 1; i <= 6; i++) {
+        countEls[i].textContent = counts[i];
+      }
+
+      renderTable();
+      drawChart();
+    }
+
+    function renderTable() {
+      let foursSoFar = 0;
+      resultBody.innerHTML = '';
+
+      results.forEach((result, index) => {
+        if (result === 4) foursSoFar++;
+        const probability = foursSoFar / (index + 1);
+
+        const row = document.createElement('tr');
+        if (result === 4) row.classList.add('hit-row');
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${result}</td>
+          <td>${percent(probability)}</td>
+        `;
+        resultBody.appendChild(row);
+      });
+    }
+
+    function drawChart() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const padding = 40;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, 20);
+      ctx.lineTo(padding, height - padding);
+      ctx.lineTo(width - 20, height - padding);
+      ctx.stroke();
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px sans-serif';
+      [0, 0.25, 0.5, 0.75, 1].forEach(value => {
+        const y = height - padding - (height - padding - 20) * value;
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - 20, y);
+        ctx.stroke();
+        ctx.fillText(Math.round(value * 100) + '%', 6, y + 4);
+      });
+
+      if (results.length === 0) {
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('まだデータがありません', width / 2 - 80, height / 2);
+        return;
+      }
+
+      const theoretical = 1 / 6;
+      const yTheory = height - padding - (height - padding - 20) * theoretical;
+      ctx.save();
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(padding, yTheory);
+      ctx.lineTo(width - 20, yTheory);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('16.7%', width - 58, yTheory - 6);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('1', padding - 3, height - 15);
+      ctx.fillText(String(results.length), width - 30, height - 15);
+      ctx.fillText('試行回数', width / 2 - 22, height - 10);
+
+      let foursSoFar = 0;
+      const points = results.map((result, index) => {
+        if (result === 4) foursSoFar++;
+        const probability = foursSoFar / (index + 1);
+        const x = padding + ((width - padding - 20) * index) / Math.max(results.length - 1, 1);
+        const y = height - padding - (height - padding - 20) * probability;
+        return { x, y };
+      });
+
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point.x, point.y);
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = '#2563eb';
+      points.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function rollDice(callback) {
+      rollButton.disabled = true;
+      autoButton.disabled = true;
+      resetButton.disabled = true;
+
+      const result = Math.floor(Math.random() * 6) + 1;
+
+      diceDisplay.className = 'dice-display';
+      diceText.textContent = 'サイコロを振っています…';
+      dieVisual.className = 'die rolling';
+      createDieFace(Math.floor(Math.random() * 6) + 1);
+
+      setTimeout(() => {
+        results.push(result);
+        createDieFace(result);
+
+        dieVisual.className = 'die';
+        diceText.textContent = '今回の結果：' + result;
+        diceDisplay.className = 'dice-display ' + (result === 4 ? 'hit' : 'miss');
+
+        updateDisplay();
+
+        if (!autoMode) {
+          rollButton.disabled = false;
+          autoButton.disabled = false;
+          resetButton.disabled = false;
+        } else {
+          autoButton.disabled = false;
+          resetButton.disabled = false;
+        }
+
+        if (callback) callback();
+      }, 600);
+    }
+
+    function startAutoMode() {
+      if (autoMode) {
+        stopAutoMode();
+        return;
+      }
+
+      autoMode = true;
+      autoButton.textContent = '自動振りを停止';
+      rollButton.disabled = true;
+
+      const run = () => {
+        if (!autoMode) return;
+        rollDice(() => {
+          if (!autoMode) return;
+          autoTimer = setTimeout(run, 200);
+        });
+      };
+
+      run();
+    }
+
+    function stopAutoMode() {
+      autoMode = false;
+      autoButton.textContent = '自動で振る';
+      rollButton.disabled = false;
+      autoButton.disabled = false;
+      resetButton.disabled = false;
+      if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    function resetSimulation() {
+      stopAutoMode();
+      results = [];
+      diceText.textContent = 'まだサイコロは振られていません';
+      diceDisplay.className = 'dice-display';
+      dieVisual.className = 'die';
+      dieVisual.innerHTML = '';
+      updateDisplay();
+    }
+
+    rollButton.addEventListener('click', () => rollDice());
+    autoButton.addEventListener('click', startAutoMode);
+    resetButton.addEventListener('click', resetSimulation);
+
+    resetSimulation();
+  </script>
+</body>
+</html>
